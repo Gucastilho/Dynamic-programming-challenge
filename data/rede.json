@@ -1,0 +1,38 @@
+{
+  "descricao": "Rede de estações da Linha 4-Amarela (operada pela Motiva/ViaQuatro) + base de manutenção. Pesos em minutos de deslocamento da equipe. Tempos e coordenadas são ESTIMATIVAS para fins acadêmicos (não são dados oficiais da operadora).",
+  "base": "BASE",
+  "vertices": [
+    {"id": "BASE", "nome": "Base de manutenção – Pátio Vila Sônia", "tipo": "base",    "lat": -23.5960, "lon": -46.7420},
+    {"id": "TVS",  "nome": "Terminal Vila Sônia (suposição)",        "tipo": "estacao", "lat": -23.5893, "lon": -46.7372},
+    {"id": "VSO",  "nome": "Vila Sônia",                              "tipo": "estacao", "lat": -23.5885, "lon": -46.7355},
+    {"id": "MBI",  "nome": "São Paulo-Morumbi",                       "tipo": "estacao", "lat": -23.5868, "lon": -46.7232},
+    {"id": "BUT",  "nome": "Butantã",                                 "tipo": "estacao", "lat": -23.5719, "lon": -46.7083},
+    {"id": "PIN",  "nome": "Pinheiros",                               "tipo": "estacao", "lat": -23.5672, "lon": -46.7019},
+    {"id": "FAL",  "nome": "Faria Lima",                              "tipo": "estacao", "lat": -23.5673, "lon": -46.6931},
+    {"id": "FRA",  "nome": "Fradique Coutinho",                       "tipo": "estacao", "lat": -23.5660, "lon": -46.6843},
+    {"id": "FRE",  "nome": "Oscar Freire",                            "tipo": "estacao", "lat": -23.5617, "lon": -46.6722},
+    {"id": "PTA",  "nome": "Paulista",                                "tipo": "estacao", "lat": -23.5552, "lon": -46.6623},
+    {"id": "HIG",  "nome": "Higienópolis-Mackenzie",                  "tipo": "estacao", "lat": -23.5475, "lon": -46.6520},
+    {"id": "REP",  "nome": "República",                               "tipo": "estacao", "lat": -23.5443, "lon": -46.6425},
+    {"id": "LUZ",  "nome": "Luz",                                     "tipo": "estacao", "lat": -23.5365, "lon": -46.6339}
+  ],
+  "arestas": [
+    {"de": "BASE", "para": "TVS", "minutos": 4,  "modo": "a pé (acesso do pátio)"},
+    {"de": "BASE", "para": "VSO", "minutos": 5,  "modo": "a pé (acesso do pátio)"},
+    {"de": "TVS",  "para": "VSO", "minutos": 3,  "modo": "a pé (interligação)"},
+    {"de": "VSO",  "para": "MBI", "minutos": 3,  "modo": "metrô"},
+    {"de": "MBI",  "para": "BUT", "minutos": 4,  "modo": "metrô"},
+    {"de": "BUT",  "para": "PIN", "minutos": 2,  "modo": "metrô"},
+    {"de": "PIN",  "para": "FAL", "minutos": 2,  "modo": "metrô"},
+    {"de": "FAL",  "para": "FRA", "minutos": 2,  "modo": "metrô"},
+    {"de": "FRA",  "para": "FRE", "minutos": 2,  "modo": "metrô"},
+    {"de": "FRE",  "para": "PTA", "minutos": 2,  "modo": "metrô"},
+    {"de": "PTA",  "para": "HIG", "minutos": 2,  "modo": "metrô"},
+    {"de": "HIG",  "para": "REP", "minutos": 2,  "modo": "metrô"},
+    {"de": "REP",  "para": "LUZ", "minutos": 2,  "modo": "metrô"},
+    {"de": "BASE", "para": "BUT", "minutos": 20, "modo": "viatura (rodoviário)"},
+    {"de": "BASE", "para": "PIN", "minutos": 24, "modo": "viatura (rodoviário)"},
+    {"de": "BASE", "para": "PTA", "minutos": 38, "modo": "viatura (rodoviário)"},
+    {"de": "BASE", "para": "LUZ", "minutos": 50, "modo": "viatura (rodoviário)"}
+  ]
+}
