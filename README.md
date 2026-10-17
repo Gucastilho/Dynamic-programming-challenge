@@ -350,3 +350,11 @@ uma única equipe. A mudança no registro de falhas em 2023 recomenda recalibrar
 | | `reconstruir_rota(pred, origem, destino)` | Caminho a partir dos predecessores |
 | `planejamento` | `planejar_turno(base, horas)` | Plano do turno: escadas, ordem e caminhos |
 | | `exibir_plano(plano)` | Imprime o plano como agenda |
+
+## integrantes do grupo
+
+Carlos Santiago Clementino - RM575749
+Gustavo Moretim Canzi - RM567683
+Gustavo Castilho Gonçalves - RM566970
+Lucca Ghiraldi Urso - RM566739
+Eduarda da Silva Brito - RM567347
