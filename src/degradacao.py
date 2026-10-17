@@ -222,12 +222,19 @@ def degradacao_tabulada(danos: Sequence[float], a: float = A_PADRAO,
 # --------------------------------------------------------------------------- #
 def ranking_criticidade(leituras: pd.DataFrame, eventos: pd.DataFrame,
                         escadas: pd.DataFrame, a: float = A_PADRAO,
-                        b: float = B_PADRAO, meses_recentes: int = 12) -> pd.DataFrame:
+                        b: float = B_PADRAO, meses_recentes: int = 12,
+                        quantil_critica: float = 0.75) -> pd.DataFrame:
     """Ordena as escadas pela degradação acumulada na última leitura.
 
     A criticidade é ``D(n-1)`` calculado pela versão tabulada. Para apoiar a
     leitura do ranking, a tabela traz também eventos, falhas Z1 e horas de
     indisponibilidade nos últimos ``meses_recentes`` meses.
+
+    A coluna ``classe`` separa as escadas nos dois grupos de manutenção citados
+    pela Motiva: **Crítica** (criticidade no quartil superior, ``quantil_critica``)
+    e **Não crítica**. Se ``eventos`` tiver a coluna ``sinal``
+    (:func:`src.sinais.adicionar_sinal`), entra também o ``sinal_predominante``
+    de cada escada nos últimos meses.
 
     Returns:
         DataFrame ordenado do mais crítico para o menos crítico, com a coluna
@@ -255,6 +262,13 @@ def ranking_criticidade(leituras: pd.DataFrame, eventos: pd.DataFrame,
     rk["eventos_12m"] = rk["eventos_12m"].astype(int)
     rk["falhas_z1_12m"] = rk["falhas_z1_12m"].astype(int)
     rk["horas_paradas_12m"] = rk["horas_paradas_12m"].round(1)
+    limiar = rk["criticidade"].quantile(quantil_critica)
+    rk["classe"] = np.where(rk["criticidade"] >= limiar, "Crítica", "Não crítica")
     rk["criticidade"] = rk["criticidade"].round(2)
-    return rk[["posicao", "escada", "estacao", "criticidade", "eventos_12m",
-               "falhas_z1_12m", "horas_paradas_12m"]]
+    colunas = ["posicao", "escada", "estacao", "criticidade", "classe", "eventos_12m",
+               "falhas_z1_12m", "horas_paradas_12m"]
+    if "sinal" in eventos.columns:
+        from .sinais import sinal_predominante
+        rk["sinal_predominante"] = rk["escada"].map(sinal_predominante(eventos, meses_recentes))
+        colunas.append("sinal_predominante")
+    return rk[colunas]

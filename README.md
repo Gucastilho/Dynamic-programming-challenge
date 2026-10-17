@@ -6,10 +6,23 @@ e monta o **plano de manutenção do turno** com `planejar_turno(base, horas)`.
 
 O notebook [`notebook.ipynb`](notebook.ipynb) já está executado e roda de ponta a ponta em cerca de 15 segundos.
 
+## Contexto do desafio
+
+A Motiva (antigo Grupo CCR) opera a Linha 4-Amarela pela ViaQuatro, com **197 escadas rolantes** atendidas por
+**4 grupos de manutenção** (críticas e não críticas). Hoje a preventiva segue **calendário** (planos P1, P6, P9…) e
+trata igualmente escadas com usos e desgastes muito diferentes. O desafio pede manutenção **orientada por dados**.
+Este projeto responde a duas das perguntas do desafio:
+
+| Pergunta do desafio | Como o projeto responde |
+|---|---|
+| Quais equipamentos merecem maior atenção e prioridade? | Ranking de criticidade por degradação acumulada, com as escadas separadas em **Crítica** e **Não crítica** |
+| Como transformar essas informações em apoio à priorização? | `planejar_turno(base, horas)`: escadas, ordem e rota do turno |
+
 ---
 
 ## Sumário
 
+0. [Contexto do desafio](#contexto-do-desafio)
 1. [Como executar](#como-executar)
 2. [Estrutura do repositório](#estrutura-do-repositório)
 3. [Dados](#dados)
@@ -54,6 +67,7 @@ python scripts/preparar_dados.py <pasta_com_os_xlsx>
 │   └── ranking_criticidade.csv # saída do notebook
 ├── src/
 │   ├── degradacao.py           # dano por evento, 3 versões da recorrência, ranking
+│   ├── sinais.py               # liga cada nota ao sinal de sensor (ou item fora do escopo)
 │   ├── grafo.py                # lista de adjacência, BFS, Dijkstra, A*, reconstrução de rota
 │   └── planejamento.py         # planejar_turno (mochila por programação dinâmica + rotas)
 ├── scripts/preparar_dados.py   # limpeza das exportações do SAP
@@ -63,11 +77,11 @@ python scripts/preparar_dados.py <pasta_com_os_xlsx>
 ## Dados
 
 > **Adaptação importante.** O enunciado cita sensores (vibração, temperatura, corrente/tensão, nível de óleo e
-> velocidade), mas os dados recebidos da Motiva são **notas de manutenção do SAP** das escadas rolantes da Linha 4,
-> de 2009 a set/2026. Não há leituras de sensores. Cada nota datada é tratada como uma **leitura** do estado da escada,
-> e o dano de cada leitura é calculado a partir de campos reais da nota. Sintomas como *ruído anormal*,
-> *nível de óleo baixo* e *não reduz velocidade* aparecem nas notas e fazem o papel dos sinais de sensor. Se houver
-> telemetria, basta trocar a função `dano_evento`; o restante do pipeline não muda.
+> velocidade), mas o dataset fornecido pela Motiva é o histórico de **notas de manutenção do SAP** das escadas
+> rolantes da Linha 4, de 2009 a set/2026. Não há telemetria. Cada nota datada é tratada como uma **leitura** do
+> estado da escada, e o dano de cada leitura é calculado com campos reais da nota. Além disso, cada nota é ligada ao
+> sinal de sensor que teria detectado o problema (ver [Das notas aos sinais](#das-notas-aos-sinais-monitorados)).
+> Se houver telemetria, basta trocar a função `dano_evento`; o restante do pipeline não muda.
 
 **Limpeza** (`scripts/preparar_dados.py`): de 104.119 linhas brutas, foram removidas 2.585 notas duplicadas,
 680 sem escada identificada e 4.912 canceladas ou duplicadas no SAP. Notas sem data de avaria (preventivas Z3
@@ -88,6 +102,32 @@ a partir de 2023, 77 % das Z1 têm a descrição padronizada *Falha Técnica* e 
 *resetado e testado*. Ou seja, as paradas curtas passaram a ser registradas automaticamente. O valor absoluto da
 degradação é maior depois de 2023, mas o ranking compara todas as escadas **no mesmo mês**, sob o mesmo regime de
 registro, então continua justo.
+
+### Das notas aos sinais monitorados
+
+`src/sinais.py` classifica cada nota na família de sinal que a descreve, lendo os campos em ordem de evidência
+(sintoma → defeito → causa → objeto → descrição). As famílias são os **cinco sinais monitorados** do desafio e os
+**quatro itens que o desafio declara fora do escopo dos sensores**.
+
+| Grupo | Família | Notas | % | Exemplos de sintoma |
+|---|---|---:|---:|---|
+| Sensor | Corrente/Tensão | 13.451 | 21,3 | mau contato, não liga, linha de segurança |
+| Sensor | Vibração | 8.386 | 13,3 | folga anormal, ruído anormal, corrente principal |
+| Sensor | Velocidade | 6.599 | 10,4 | travado, alarme de sub/sobrevelocidade |
+| Sensor | Nível de óleo | 4.284 | 6,8 | alarme da bomba de lubrificação, vazamento |
+| Sensor | Temperatura | 597 | 0,9 | alarme térmico do motor |
+| Fora do escopo | Degraus/roletes | 8.715 | 13,8 | quebra/falta de degrau, roletes |
+| Fora do escopo | Corrimão | 4.535 | 7,2 | entrada e velocidade de corrimão |
+| Fora do escopo | Freio | 3.980 | 6,3 | bloqueio e desgaste de freio |
+| Fora do escopo | Estrutura/trincas | 1.938 | 3,1 | trincado, deformação, ruptura |
+| — | Outros | 10.665 | 16,9 | placa pente, rodapé, vandalismo, iluminação |
+
+![Sinais](figs/sinais.png)
+
+**Interpretação.** Das 63.150 notas de desgaste, **52,8 %** descrevem problemas que um dos cinco sinais monitorados
+teria captado, e **30,4 %** caem nos itens fora do escopo dos sensores. Essa é a **observação dos dados**. A
+**hipótese técnica** que decorre dela é que o histórico de notas deve complementar a telemetria, não ser substituído
+por ela. Sensores de freio e de corrimão seriam os próximos candidatos.
 
 ## Degradação acumulada – três versões
 
@@ -140,21 +180,26 @@ memoizada, porque não paga chamadas de função nem consultas ao dicionário, e
 
 ## Ranking de criticidade
 
-A criticidade é `D(n-1)`, a degradação acumulada na última leitura (set/2026). A lista completa está em
-`data/ranking_criticidade.csv`.
+A criticidade é `D(n-1)`, a degradação acumulada na última leitura (set/2026). Para alinhar com os grupos de
+manutenção da Motiva, o quartil superior (criticidade ≥ 114,7) forma a classe **Crítica**, com 50 escadas, e as
+outras 148 ficam como **Não crítica**. A lista completa está em `data/ranking_criticidade.csv`.
 
-| # | Escada | Estação | Criticidade | Eventos 12 m | Falhas Z1 12 m | Horas paradas 12 m |
-|---:|---|---|---:|---:|---:|---:|
-| 1 | PIN-ER24 | Pinheiros | 305,6 | 157 | 122 | 281 |
-| 2 | PTA-ER15 | Paulista | 262,0 | 115 | 81 | 491 |
-| 3 | PIN-ER06 | Pinheiros | 238,9 | 100 | 89 | 151 |
-| 4 | VSO-ER08 | Vila Sônia | 238,8 | 145 | 130 | 116 |
-| 5 | PTA-ER17 | Paulista | 236,1 | 147 | 117 | 252 |
-| 6 | LUZ-ER04 | Luz | 207,3 | 152 | 135 | 159 |
-| 7 | FRE-ER13 | Oscar Freire | 206,3 | 110 | 102 | 387 |
-| 8 | REP-ER59 | República | 206,1 | 115 | 93 | 144 |
-| 9 | PIN-ER28 | Pinheiros | 200,6 | 138 | 129 | 259 |
-| 10 | VSO-ER12 | Vila Sônia | 198,4 | 108 | 90 | 175 |
+| # | Escada | Estação | Criticidade | Classe | Eventos 12 m | Falhas Z1 12 m | Horas paradas 12 m | Sinal predominante |
+|---:|---|---|---:|---|---:|---:|---:|---|
+| 1 | PIN-ER24 | Pinheiros | 305,6 | Crítica | 157 | 122 | 281 | Corrente/Tensão |
+| 2 | PTA-ER15 | Paulista | 262,0 | Crítica | 115 | 81 | 491 | Corrente/Tensão |
+| 3 | PIN-ER06 | Pinheiros | 238,9 | Crítica | 100 | 89 | 151 | Degraus/roletes |
+| 4 | VSO-ER08 | Vila Sônia | 238,8 | Crítica | 145 | 130 | 116 | Corrente/Tensão |
+| 5 | PTA-ER17 | Paulista | 236,1 | Crítica | 147 | 117 | 252 | Corrente/Tensão |
+| 6 | LUZ-ER04 | Luz | 207,3 | Crítica | 152 | 135 | 159 | Corrente/Tensão |
+| 7 | FRE-ER13 | Oscar Freire | 206,3 | Crítica | 110 | 102 | 387 | Corrente/Tensão |
+| 8 | REP-ER59 | República | 206,1 | Crítica | 115 | 93 | 144 | Corrente/Tensão |
+| 9 | PIN-ER28 | Pinheiros | 200,6 | Crítica | 138 | 129 | 259 | Corrente/Tensão |
+| 10 | VSO-ER12 | Vila Sônia | 198,4 | Crítica | 108 | 90 | 175 | Corrente/Tensão |
+
+| Escadas críticas por estação | PIN | LUZ | BUT | PTA | FAL | FRE | VSO | MBI | REP | HIG | FRA | TVS |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Crítica / total | 13/32 | 8/20 | 6/14 | 5/18 | 4/10 | 3/20 | 3/20 | 3/13 | 3/6 | 2/26 | 0/10 | 0/9 |
 
 ![Top 15](figs/ranking_top15.png)
 ![Série das 5 mais críticas](figs/serie_top5.png)
@@ -163,6 +208,11 @@ A criticidade é `D(n-1)`, a degradação acumulada na última leitura (set/2026
 indisponibilidade do topo (491 horas paradas). Pinheiros concentra 8 das 30 escadas mais críticas, o que é coerente
 com ser a maior estação (32 escadas) e um ponto de integração com a CPTM. A série mês a mês mostra que o modelo
 reage a pioras recentes: a PIN-ER24 teve pico em 2025 e vem caindo, enquanto VSO-ER08 e PIN-ER06 subiram em 2026.
+
+**Grupos e sinais.** Pinheiros tem 13 de 32 escadas no grupo crítico. Higienópolis, com 26 escadas, tem só 2, então
+o número de escadas da estação não explica sozinho a criticidade. O sinal predominante dos últimos 12 meses é
+corrente/tensão em 43 das 50 críticas, o que reflete as falhas de linha de segurança resolvidas com reset que
+dominam o registro desde 2023. Nas outras 7 críticas predominam degraus/roletes, um item fora do escopo dos sensores.
 
 **Sensibilidade.** Com (a, b) = (0,3; 0,1) ou (0,8; 0,15), 12 a 13 das 20 primeiras continuam no top 20, e a
 correlação de Spearman com o ranking padrão fica entre 0,85 e 0,93. O grupo do topo é robusto; as posições
@@ -266,11 +316,14 @@ tempo disponível.
 
 1. **Programação dinâmica é indispensável:** a recursão pura é exponencial (×1,618 por leitura). Memoização e
    tabulação resolvem 198 escadas × 201 meses em milissegundos, com o mesmo resultado.
-2. **Pinheiros, Paulista e Vila Sônia** concentram as escadas mais críticas; a PIN-ER24 lidera.
+2. **Manutenção por dados em vez de calendário:** o ranking separa 50 escadas críticas de 148 não críticas.
+   Pinheiros (13), Luz (8) e Butantã (6) concentram o grupo crítico; a PIN-ER24 lidera.
 3. **Dijkstra é o algoritmo certo para a equipe:** o BFS economiza trechos, mas custa até 26 minutos a mais.
 4. **O A\* é correto, mas só compensa em redes maiores:** na Linha 4 não poda nada; numa malha de 3.600 vértices
    expande 60 % menos.
 5. **`planejar_turno` integra tudo:** ranking como valor, Dijkstra como custo e mochila por DP para escolher as escadas.
+6. **Sensores e notas se complementam:** 53 % do desgaste registrado seria captado pelos cinco sinais monitorados,
+   e 30 % está em itens fora do escopo dos sensores (degraus/roletes, corrimão, freio, trincas).
 
 **Limitações.** Os dados são notas de manutenção, não sensores. Os pesos do dano e os coeficientes `a` e `b` são
 escolhas de modelagem, com sensibilidade analisada no notebook. Os tempos da rede são estimados. O plano supõe
@@ -285,7 +338,10 @@ uma única equipe. A mudança no registro de falhas em 2023 recomenda recalibrar
 | | `degradacao_recursiva(danos, i)` | D(i) por recursão pura (com contador de chamadas) |
 | | `degradacao_memoizada(danos, i, memo)` | D(i) com memo em dicionário |
 | | `degradacao_tabulada(danos, serie=False)` | D(n−1) ou a série completa, por tabulação |
-| | `ranking_criticidade(leituras, eventos, escadas, a, b)` | Ranking das escadas |
+| | `ranking_criticidade(leituras, eventos, escadas, a, b)` | Ranking das escadas, com classe Crítica/Não crítica |
+| `sinais` | `classificar_nota(nota)` | Família de sinal de uma nota (sensor ou fora do escopo) |
+| | `adicionar_sinal(eventos)` | Acrescenta as colunas `sinal` e `grupo_sinal` |
+| | `sinal_predominante(eventos)` | Sinal mais frequente de cada escada nos últimos 12 meses |
 | `grafo` | `carregar_rede(json, escadas)` | Monta o grafo (lista de adjacência) e liga as escadas às estações |
 | | `bfs(g, origem)` | Menor número de trechos |
 | | `dijkstra(g, origem, destino=None)` | Menor tempo (árvore inteira ou ponto a ponto) |

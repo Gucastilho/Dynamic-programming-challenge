@@ -34,6 +34,7 @@ import pandas as pd
 
 from .grafo import Grafo, carregar_rede, dijkstra, reconstruir_rota
 from .degradacao import adicionar_dano, leituras_mensais, ranking_criticidade
+from .sinais import adicionar_sinal
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ACESSO_INTERNO_MIN = 10       # deslocamento dentro da estação até a escada
@@ -69,7 +70,7 @@ def carregar_contexto(pasta_data: str = os.path.join(RAIZ, "data")) -> dict:
     É chamado automaticamente por :func:`planejar_turno` quando nenhum
     contexto é passado, para que a função funcione só com ``(base, horas)``.
     """
-    eventos = adicionar_dano(pd.read_csv(os.path.join(pasta_data, "eventos_escadas.csv")))
+    eventos = adicionar_sinal(adicionar_dano(pd.read_csv(os.path.join(pasta_data, "eventos_escadas.csv"))))
     escadas = pd.read_csv(os.path.join(pasta_data, "escadas.csv"))
     grafo = carregar_rede(os.path.join(pasta_data, "rede.json"), escadas)
     ranking = ranking_criticidade(leituras_mensais(eventos), eventos, escadas)
