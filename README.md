@@ -351,7 +351,7 @@ uma única equipe. A mudança no registro de falhas em 2023 recomenda recalibrar
 | `planejamento` | `planejar_turno(base, horas)` | Plano do turno: escadas, ordem e caminhos |
 | | `exibir_plano(plano)` | Imprime o plano como agenda |
 
-## integrantes do grupo
+## Integrantes do grupo
 
 Carlos Santiago Clementino - RM575749
 Gustavo Moretim Canzi - RM567683
